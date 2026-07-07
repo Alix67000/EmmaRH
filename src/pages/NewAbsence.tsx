@@ -63,14 +63,34 @@ export default function NewAbsence() {
       const { data, error } = await supabase.from('absences').insert([dataToInsert]).select().single();
       if (error) throw error;
 
-      // Create notification
-      const { error: notifError } = await supabase.from('notifications').insert([{
-        user_id: profile?.id, // Actually, should notify managers of that site. For simplicity, just inserting a basic notif or skipping.
-        titre: "Nouvelle demande d'absence",
-        message: `Une nouvelle demande a été créée.`,
-        lien: '/absences/validate'
-      }]);
-      // Ignore notif error
+      // Create notification for managers of the employee's site
+      const employee = employees.find(e => e.id === absence.employee_id);
+      const employeeSiteId = employee?.site_id || null;
+      
+      if (employeeSiteId) {
+        const { data: managers } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('role', 'manager')
+          .eq('site_id', employeeSiteId);
+          
+        if (managers && managers.length > 0) {
+          const employeePrenom = employee?.first_name || '';
+          const employeeNom = employee?.last_name || '';
+          const typeObj = absenceTypes.find(t => t.id === absence.absence_type_id);
+          const typeName = typeObj?.name || 'Absence';
+          const dateDebut = new Date(absence.date_debut!).toLocaleDateString('fr-FR');
+          const dateFin = new Date(absence.date_fin!).toLocaleDateString('fr-FR');
+
+          const notifs = managers.map(m => ({
+            user_id: m.id,
+            titre: "Nouvelle demande d'absence",
+            message: `${employeePrenom} ${employeeNom.toUpperCase()} — ${typeName} du ${dateDebut} au ${dateFin}`,
+            lien: '/absences/validate'
+          }));
+          await supabase.from('notifications').insert(notifs);
+        }
+      }
 
       navigate('/absences');
     } catch (err: any) {
