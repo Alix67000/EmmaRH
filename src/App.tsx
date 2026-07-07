@@ -31,6 +31,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/employees" element={<EmployeesList />} />
+              <Route path="/employees/new" element={<EmployeeDetails />} />
               <Route path="/employees/:id" element={<EmployeeDetails />} />
               <Route path="/employees/:id/documents" element={<EmployeeDocuments />} />
               
