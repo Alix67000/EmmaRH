@@ -9,6 +9,7 @@ export default function Layout() {
   let title = "Vue d'ensemble : Tous les sites";
   if (location.pathname.includes('/employees')) title = "Collaborateurs";
   if (location.pathname.includes('/absences')) title = "Gestion des Absences";
+  if (location.pathname.includes('/planning')) title = "Planning des présences / absences";
   if (location.pathname.includes('/documents')) title = "Documents RH";
   if (location.pathname.includes('/sites')) title = "Sites Emmaüs";
   if (location.pathname.includes('/soldes')) title = "Soldes & Congés";

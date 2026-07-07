@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import { cn } from '../lib/utils';
-import { LayoutDashboard, Users, FileText, CalendarOff, Building, Map, Settings, LogOut, FileBadge } from 'lucide-react';
+import { LayoutDashboard, Users, FileText, CalendarOff, CalendarDays, Building, Map, Settings, LogOut, FileBadge } from 'lucide-react';
 
 export default function Sidebar() {
   const { profile } = useAuth();
@@ -16,6 +16,7 @@ export default function Sidebar() {
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Collaborateurs', path: '/employees', icon: Users },
     { name: 'Absences', path: '/absences', icon: CalendarOff, badge: '3' },
+    { name: 'Planning', path: '/planning', icon: CalendarDays },
     { name: 'Documents', path: '/documents', icon: FileText, badge: '1' },
     { name: 'Sites Emmaüs', path: '/sites', icon: Building },
     { name: 'Soldes & Congés', path: '/soldes', icon: FileBadge },

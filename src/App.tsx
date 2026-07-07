@@ -16,6 +16,7 @@ import DocumentsGlobal from './pages/DocumentsGlobal';
 import SitesPage from './pages/SitesPage';
 import SoldesPage from './pages/SoldesPage';
 import DocumentTypesSettings from './pages/DocumentTypesSettings';
+import PlanningCalendar from './pages/PlanningCalendar';
 
 // Placeholder components for routing
 const Placeholder = ({ title }: { title: string }) => (
@@ -42,6 +43,7 @@ export default function App() {
               <Route path="/absences" element={<AbsencesList />} />
               <Route path="/absences/new" element={<NewAbsence />} />
               <Route path="/absences/validate" element={<ValidateAbsences />} />
+              <Route path="/planning" element={<PlanningCalendar />} />
               
               <Route path="/documents" element={<DocumentsGlobal />} />
               <Route path="/sites" element={<SitesPage />} />
