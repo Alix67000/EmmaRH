@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useEmployees } from '../hooks/useEmployees';
+import { useAuth } from '../context/AuthContext';
 import { Site } from '../types';
 import { Plus, Trash2, Building2, MapPin, Save } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -31,19 +32,25 @@ export default function SitesPage() {
     }
   };
 
+  const { profile } = useAuth();
+  
   const handleSave = async () => {
     if (!newSite.name.trim()) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('sites').insert([{ name: newSite.name, address: newSite.address }]);
+      const payload: any = { name: newSite.name.trim() };
+      if (newSite.address && newSite.address.trim()) {
+        payload.address = newSite.address.trim();
+      }
+      const { error } = await supabase.from('sites').insert([payload]);
       if (error) throw error;
       
       setShowForm(false);
       setNewSite({ name: '', address: '' });
       fetchSites();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving site:', err);
-      alert("Erreur lors de l'enregistrement du site.");
+      alert(`Erreur lors de l'enregistrement du site: ${err.message || 'Erreur inconnue'}`);
     } finally {
       setSaving(false);
     }
@@ -74,15 +81,17 @@ export default function SitesPage() {
             <Building2 className="w-4 h-4 text-slate-400" />
             Sites Emmaüs
           </h3>
-          <button 
-            onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-sm transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" /> Nouveau site
-          </button>
+          {profile?.role === 'admin' && (
+            <button 
+              onClick={() => setShowForm(!showForm)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-sm transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" /> Nouveau site
+            </button>
+          )}
         </div>
 
-        {showForm && (
+        {showForm && profile?.role === 'admin' && (
           <div className="p-4 border-b border-slate-100 bg-slate-50/50 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -157,13 +166,15 @@ export default function SitesPage() {
                       </span>
                     </td>
                     <td className="pr-4 text-right">
-                      <button 
-                        onClick={() => handleDelete(site.id)}
-                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
-                        title="Supprimer ce site"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                      {profile?.role === 'admin' && (
+                        <button 
+                          onClick={() => handleDelete(site.id)}
+                          className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors"
+                          title="Supprimer ce site"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
