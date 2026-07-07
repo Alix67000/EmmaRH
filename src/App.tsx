@@ -14,6 +14,7 @@ import AbsenceTypesSettings from './pages/AbsenceTypesSettings';
 import UsersRoles from './pages/UsersRoles';
 import DocumentsGlobal from './pages/DocumentsGlobal';
 import SitesPage from './pages/SitesPage';
+import SoldesPage from './pages/SoldesPage';
 
 // Placeholder components for routing
 const Placeholder = ({ title }: { title: string }) => (
@@ -43,7 +44,7 @@ export default function App() {
               
               <Route path="/documents" element={<DocumentsGlobal />} />
               <Route path="/sites" element={<SitesPage />} />
-              <Route path="/soldes" element={<Placeholder title="Soldes & Congés" />} />
+              <Route path="/soldes" element={<SoldesPage />} />
               
               <Route path="/settings/document-types" element={<Placeholder title="Configuration Types de Documents" />} />
               <Route path="/settings/absence-types" element={<AbsenceTypesSettings />} />
