@@ -32,6 +32,31 @@ export default function Login() {
     }
   };
 
+  const handleSetup = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Create admin user
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: 'admin@emmarh.fr',
+        password: 'admin123',
+        options: {
+          data: {
+            full_name: 'Admin Principal',
+            role: 'admin'
+          }
+        }
+      });
+      if (signUpError) throw signUpError;
+      
+      alert('Compte de test créé avec succès ! Vous pouvez maintenant vous connecter.');
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la création du compte');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
       <div className="max-w-md w-full bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -91,10 +116,18 @@ export default function Login() {
           </form>
           
           <div className="mt-6 text-center">
-             <div className="text-[10px] text-slate-400 font-medium">
+             <div className="text-[10px] text-slate-400 font-medium mb-3">
                 Comptes de test (mot de passe: <strong>admin123</strong> ou <strong>manager123</strong>):<br/>
                 admin@emmarh.fr | manager1@emmarh.fr
              </div>
+             
+             <button
+              onClick={handleSetup}
+              disabled={loading}
+              className="text-xs text-emerald-600 font-bold hover:underline"
+             >
+               Créer le compte admin@emmarh.fr (si inexistant)
+             </button>
           </div>
         </div>
       </div>

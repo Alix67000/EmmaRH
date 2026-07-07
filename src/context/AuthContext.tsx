@@ -56,6 +56,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (error) {
         console.error('Error fetching profile:', error);
+        if (error.code === 'PGRST116') {
+          // No profile found. This happens if auth user exists but trigger failed.
+          // Sign out the user to prevent dead-end state.
+          await supabase.auth.signOut();
+          alert("Votre compte existe mais le profil est introuvable. Veuillez supprimer l'utilisateur dans Supabase Auth et recréer le compte via le bouton sur la page de connexion.");
+        }
       } else {
         setProfile(data as Profile);
       }
