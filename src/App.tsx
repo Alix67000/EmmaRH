@@ -15,6 +15,7 @@ import UsersRoles from './pages/UsersRoles';
 import DocumentsGlobal from './pages/DocumentsGlobal';
 import SitesPage from './pages/SitesPage';
 import SoldesPage from './pages/SoldesPage';
+import DocumentTypesSettings from './pages/DocumentTypesSettings';
 
 // Placeholder components for routing
 const Placeholder = ({ title }: { title: string }) => (
@@ -46,7 +47,7 @@ export default function App() {
               <Route path="/sites" element={<SitesPage />} />
               <Route path="/soldes" element={<SoldesPage />} />
               
-              <Route path="/settings/document-types" element={<Placeholder title="Configuration Types de Documents" />} />
+              <Route path="/settings/document-types" element={<DocumentTypesSettings />} />
               <Route path="/settings/absence-types" element={<AbsenceTypesSettings />} />
               <Route path="/settings/users-roles" element={<UsersRoles />} />
             </Route>
