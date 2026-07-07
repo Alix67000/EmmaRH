@@ -12,6 +12,7 @@ import NewAbsence from './pages/NewAbsence';
 import ValidateAbsences from './pages/ValidateAbsences';
 import AbsenceTypesSettings from './pages/AbsenceTypesSettings';
 import UsersRoles from './pages/UsersRoles';
+import DocumentsGlobal from './pages/DocumentsGlobal';
 
 // Placeholder components for routing
 const Placeholder = ({ title }: { title: string }) => (
@@ -39,7 +40,7 @@ export default function App() {
               <Route path="/absences/new" element={<NewAbsence />} />
               <Route path="/absences/validate" element={<ValidateAbsences />} />
               
-              <Route path="/documents" element={<Placeholder title="Gestion des Documents" />} />
+              <Route path="/documents" element={<DocumentsGlobal />} />
               <Route path="/sites" element={<Placeholder title="Sites Emmaüs" />} />
               <Route path="/soldes" element={<Placeholder title="Soldes & Congés" />} />
               
