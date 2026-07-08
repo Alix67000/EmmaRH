@@ -188,7 +188,7 @@ export default function Dashboard() {
         {/* Répartition par Site */}
         <div className="col-span-1 bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col h-80">
           <div className="p-4 border-b border-slate-100">
-            <h3 className="font-bold text-sm text-slate-700">Effectifs par site</h3>
+            <h3 className="font-bold text-sm text-slate-700">Effectifs par entité</h3>
           </div>
           <div className="flex-1 p-4 overflow-auto space-y-4">
             {Object.entries(siteCounts).map(([site, count]) => {

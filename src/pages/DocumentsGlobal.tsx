@@ -110,7 +110,7 @@ export default function DocumentsGlobal() {
                 onChange={(e) => setSiteFilter(e.target.value)}
                 className="py-1.5 px-2 border border-slate-200 rounded-md bg-white outline-none focus:border-emerald-500"
               >
-                <option value="tous">Tous les sites</option>
+                <option value="tous">Toutes les entités</option>
                 {sites.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -125,7 +125,7 @@ export default function DocumentsGlobal() {
           <thead className="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-400 font-bold uppercase z-10">
             <tr className="h-8 px-4">
               <th className="pl-4 font-bold">Employé</th>
-              <th className="font-bold">Site</th>
+              <th className="font-bold">Entité</th>
               <th className="font-bold">Type</th>
               <th className="font-bold">Date Émission</th>
               <th className="font-bold">Date Expiration</th>

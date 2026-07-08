@@ -141,7 +141,7 @@ export default function PlanningCalendar() {
               onChange={(e) => setSiteFilter(e.target.value)}
               className="text-xs px-2 py-1.5 border border-slate-200 rounded-md bg-white outline-none focus:border-emerald-500"
             >
-              <option value="tous">Tous les sites</option>
+              <option value="tous">Toutes les entités</option>
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.name}

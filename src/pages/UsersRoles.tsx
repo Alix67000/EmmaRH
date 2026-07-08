@@ -55,7 +55,7 @@ export default function UsersRoles() {
   };
 
   const getSiteName = (siteId: string | null) => {
-    return sites.find(s => s.id === siteId)?.name || 'Tous les sites (Admin)';
+    return sites.find(s => s.id === siteId)?.name || 'Toutes les entités (Admin)';
   };
 
   return (
@@ -76,7 +76,7 @@ export default function UsersRoles() {
                 <th className="pl-4 font-bold">Utilisateur</th>
                 <th className="font-bold">Email</th>
                 <th className="font-bold">Rôle</th>
-                <th className="font-bold">Affectation Site</th>
+                <th className="font-bold">Affectation Entité</th>
                 <th className="pr-4 font-bold text-right">Actions</th>
               </tr>
             </thead>

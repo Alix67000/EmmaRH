@@ -91,7 +91,7 @@ export default function EmployeesList() {
                 onChange={(e) => setSiteFilter(e.target.value)}
                 className="py-1.5 px-2 border border-slate-200 rounded-md bg-white outline-none focus:border-emerald-500"
               >
-                <option value="tous">Tous les sites</option>
+                <option value="tous">Toutes les entités</option>
                 {sites.map(s => (
                   <option key={s.id} value={s.id}>{s.name}</option>
                 ))}
@@ -107,7 +107,7 @@ export default function EmployeesList() {
             <tr className="h-8 px-4">
               <th className="pl-4 font-bold">Nom</th>
               <th className="font-bold">Prénom</th>
-              <th className="font-bold">Site</th>
+              <th className="font-bold">Entité</th>
               <th className="font-bold">Poste</th>
               <th className="font-bold">Date Entrée</th>
               <th className="font-bold">Statut</th>

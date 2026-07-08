@@ -1,5 +1,15 @@
 export type Role = 'admin' | 'manager';
 
+export type DayKey = 'lundi' | 'mardi' | 'mercredi' | 'jeudi' | 'vendredi' | 'samedi' | 'dimanche';
+
+export interface DaySchedule {
+  active: boolean;
+  debut: string;
+  fin: string;
+}
+
+export type WeeklySchedule = Record<DayKey, DaySchedule>;
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -28,6 +38,7 @@ export interface Employee {
   date_sortie: string | null;
   email: string | null;
   phone: string | null;
+  horaires_travail: WeeklySchedule | null;
   created_at: string;
 }
 
