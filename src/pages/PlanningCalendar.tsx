@@ -4,8 +4,9 @@ import { useAbsences } from '../hooks/useAbsences';
 import { useAbsenceTypes } from '../hooks/useAbsenceTypes';
 import { useSites } from '../hooks/useSites';
 import { useAuth } from '../context/AuthContext';
-import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarDays, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { printElementAsA4 } from '../lib/printPlanning';
 
 // D = Dimanche, L = Lundi ... (index = Date.getDay())
 const DAY_LETTERS = ['D', 'L', 'M', 'M', 'J', 'V', 'S'];
@@ -169,11 +170,18 @@ export default function PlanningCalendar() {
           >
             <ChevronRight className="w-4 h-4" />
           </button>
+          <button
+            onClick={() => printElementAsA4('planning-presence-export', `Planning présence - ${MONTH_NAMES[cursor.month]} ${cursor.year}`)}
+            className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-md shadow-sm transition-colors"
+            title="Télécharger le planning en PDF (format A4)"
+          >
+            <Download className="w-3.5 h-3.5" /> PDF
+          </button>
         </div>
       </div>
 
       {/* Grille du planning */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+      <div id="planning-presence-export" className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-auto max-h-[65vh]">
           <table className="border-collapse text-[11px] w-full">
             <thead className="sticky top-0 z-20">

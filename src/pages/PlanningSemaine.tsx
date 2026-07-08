@@ -7,9 +7,10 @@ import { usePlanningAssignments } from '../hooks/usePlanningAssignments';
 import { useJoursFeries } from '../hooks/useJoursFeries';
 import { useAuth } from '../context/AuthContext';
 import { useSites } from '../hooks/useSites';
-import { ChevronLeft, ChevronRight, CalendarRange } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CalendarRange, Download } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { DayKey } from '../types';
+import { printElementAsA4 } from '../lib/printPlanning';
 
 const DAY_KEYS: DayKey[] = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const DAY_LABELS: Record<DayKey, string> = {
@@ -164,11 +165,23 @@ export default function PlanningSemaine() {
           <button onClick={() => changeWeek(1)} className="p-1.5 border border-slate-200 rounded-md hover:bg-slate-50 text-slate-600" title="Semaine suivante">
             <ChevronRight className="w-4 h-4" />
           </button>
+          <button
+            onClick={() =>
+              printElementAsA4(
+                'planning-semaine-export',
+                `Planning du ${fmtShort(weekDates[0])} au ${fmtShort(weekDates[weekDates.length - 1])}`
+              )
+            }
+            className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-md shadow-sm transition-colors"
+            title="Télécharger le planning en PDF (format A4)"
+          >
+            <Download className="w-3.5 h-3.5" /> PDF
+          </button>
         </div>
       </div>
 
       {/* Grille du planning hebdomadaire */}
-      <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+      <div id="planning-semaine-export" className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-auto max-h-[70vh]">
           <table className="border-collapse text-[11px] w-full">
             <thead className="sticky top-0 z-20">
