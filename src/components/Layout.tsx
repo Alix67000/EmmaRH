@@ -9,7 +9,8 @@ export default function Layout() {
   let title = "Vue d'ensemble : Toutes les entités";
   if (location.pathname.includes('/employees')) title = "Collaborateurs";
   if (location.pathname.includes('/absences')) title = "Gestion des Absences";
-  if (location.pathname.includes('/planning')) title = "Planning des présences / absences";
+  if (location.pathname.includes('/planning-semaine')) title = "Planning semaine";
+  else if (location.pathname.includes('/planning')) title = "Planning présence";
   if (location.pathname.includes('/documents')) title = "Documents RH";
   if (location.pathname.includes('/sites')) title = "Entités";
   if (location.pathname.includes('/soldes')) title = "Soldes & Congés";

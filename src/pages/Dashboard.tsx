@@ -4,7 +4,8 @@ import { useEmployees } from '../hooks/useEmployees';
 import { useDocuments } from '../hooks/useDocuments';
 import { useAbsences } from '../hooks/useAbsences';
 import { useSites } from '../hooks/useSites';
-import { FileText, Users, CalendarOff, AlertCircle, Clock, ArrowRight } from 'lucide-react';
+import { useContracts } from '../hooks/useContracts';
+import { FileText, Users, CalendarOff, AlertCircle, Clock, ArrowRight, Briefcase } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export default function Dashboard() {
@@ -13,8 +14,9 @@ export default function Dashboard() {
   const { documents, loading: docLoading } = useDocuments();
   const { absences, loading: absLoading } = useAbsences();
   const { sites, loading: sitesLoading } = useSites();
+  const { contracts, loading: contractsLoading } = useContracts();
 
-  const loading = empLoading || docLoading || absLoading || sitesLoading;
+  const loading = empLoading || docLoading || absLoading || sitesLoading || contractsLoading;
 
   // Filtre en fonction du rôle
   const filteredEmployees = employees.filter(e => 
@@ -24,6 +26,7 @@ export default function Dashboard() {
   const empIds = filteredEmployees.map(e => e.id);
   const filteredAbsences = absences.filter(a => empIds.includes(a.employee_id));
   const filteredDocuments = documents.filter(d => empIds.includes(d.employee_id));
+  const filteredContracts = contracts.filter(c => empIds.includes(c.employee_id));
 
   // Dates
   const today = new Date();
@@ -59,17 +62,37 @@ export default function Dashboard() {
     return exp < today;
   });
 
+  // Regroupe les contrats par collaborateur pour déterminer le 1er contrat (arrivée)
+  // et le contrat actuel (celui avec la date de début la plus récente)
+  const contractsByEmployee: Record<string, typeof filteredContracts> = {};
+  filteredContracts.forEach(c => {
+    if (!contractsByEmployee[c.employee_id]) contractsByEmployee[c.employee_id] = [];
+    contractsByEmployee[c.employee_id].push(c);
+  });
+
   const newArrivals = filteredEmployees.filter(e => {
-    if (!e.date_entree) return false;
-    const d = new Date(e.date_entree);
+    const empContracts = contractsByEmployee[e.id];
+    if (!empContracts || empContracts.length === 0) return false;
+    // Le premier contrat (date_debut la plus ancienne) = date d'arrivée
+    const firstContract = empContracts[0]; // déjà trié par date_debut ascendant
+    const d = new Date(firstContract.date_debut);
     return d >= thirtyDaysAgo && d <= today;
   });
 
-  const upcomingDepartures = filteredEmployees.filter(e => {
-    if (!e.date_sortie) return false;
-    const d = new Date(e.date_sortie);
-    return d >= today && d <= thirtyDaysFromNow && e.status !== 'depart';
-  });
+  const upcomingDepartures = filteredEmployees
+    .map(e => {
+      const empContracts = contractsByEmployee[e.id];
+      if (!empContracts || empContracts.length === 0) return null;
+      // Le contrat actuel = celui avec la date_debut la plus récente
+      const currentContract = [...empContracts].sort((a, b) => (a.date_debut < b.date_debut ? 1 : -1))[0];
+      if (!currentContract.date_fin) return null;
+      const dateFin = new Date(currentContract.date_fin);
+      if (dateFin >= today && dateFin <= thirtyDaysFromNow) {
+        return { employee: e, contract: currentContract };
+      }
+      return null;
+    })
+    .filter((x): x is { employee: typeof filteredEmployees[0]; contract: typeof filteredContracts[0] } => x !== null);
 
   // Repartition
   const siteCounts: Record<string, number> = {};
@@ -185,7 +208,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Répartition par Site */}
+        {/* Répartition par Entité */}
         <div className="col-span-1 bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col h-80">
           <div className="p-4 border-b border-slate-100">
             <h3 className="font-bold text-sm text-slate-700">Effectifs par entité</h3>
@@ -221,35 +244,43 @@ export default function Dashboard() {
                 {newArrivals.length === 0 ? (
                   <div className="text-center text-xs text-slate-500 py-2">Aucune nouvelle entrée.</div>
                 ) : (
-                  newArrivals.map(e => (
-                    <div key={e.id} className="flex items-center gap-3">
-                       <ArrowRight className="w-4 h-4 text-emerald-500" />
-                       <div className="flex-1">
-                         <p className="text-xs font-bold">{e.first_name} {e.last_name}</p>
-                         <p className="text-[10px] text-slate-500">{e.poste} • Entré le {e.date_entree ? new Date(e.date_entree).toLocaleDateString() : ''}</p>
-                       </div>
-                    </div>
-                  ))
+                  newArrivals.map(e => {
+                    const firstContract = contractsByEmployee[e.id][0];
+                    return (
+                      <div key={e.id} className="flex items-center gap-3">
+                         <ArrowRight className="w-4 h-4 text-emerald-500" />
+                         <div className="flex-1">
+                           <p className="text-xs font-bold">{e.first_name} {e.last_name}</p>
+                           <p className="text-[10px] text-slate-500">{e.poste} • Entré le {new Date(firstContract.date_debut).toLocaleDateString()}</p>
+                         </div>
+                      </div>
+                    );
+                  })
                 )}
              </div>
           </div>
 
           <div className="bg-white border border-slate-200 rounded-lg shadow-sm flex flex-col min-h-[250px]">
              <div className="p-4 border-b border-slate-100 bg-amber-50/30">
-               <h3 className="font-bold text-sm text-slate-700 text-amber-800">Départs à venir (30 jours)</h3>
+               <h3 className="font-bold text-sm text-slate-700 text-amber-800 flex items-center gap-2">
+                 <Briefcase className="w-3.5 h-3.5" />
+                 Fins de contrat à venir (30 jours)
+               </h3>
              </div>
              <div className="p-4 space-y-3">
                 {upcomingDepartures.length === 0 ? (
-                  <div className="text-center text-xs text-slate-500 py-2">Aucun départ prévu.</div>
+                  <div className="text-center text-xs text-slate-500 py-2">Aucune fin de contrat prévue.</div>
                 ) : (
-                  upcomingDepartures.map(e => (
-                    <div key={e.id} className="flex items-center gap-3">
-                       <ArrowRight className="w-4 h-4 text-amber-500" />
+                  upcomingDepartures.map(({ employee: e, contract }) => (
+                    <Link key={e.id} to={`/employees/${e.id}`} className="flex items-center gap-3 hover:bg-amber-50/50 -mx-1 px-1 py-0.5 rounded transition-colors">
+                       <ArrowRight className="w-4 h-4 text-amber-500 flex-shrink-0" />
                        <div className="flex-1">
                          <p className="text-xs font-bold">{e.first_name} {e.last_name}</p>
-                         <p className="text-[10px] text-slate-500">{e.poste} • Départ le {e.date_sortie ? new Date(e.date_sortie).toLocaleDateString() : ''}</p>
+                         <p className="text-[10px] text-slate-500">
+                           {e.poste} • {contract.contract_type.toUpperCase()} — fin le {new Date(contract.date_fin!).toLocaleDateString()}
+                         </p>
                        </div>
-                    </div>
+                    </Link>
                   ))
                 )}
              </div>

@@ -26,11 +26,18 @@ export interface Site {
   created_at: string;
 }
 
+export interface Atelier {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Employee {
   id: string;
   first_name: string;
   last_name: string;
   site_id: string | null;
+  atelier_id: string | null;
   poste: string | null;
   manager_id: string | null;
   status: 'actif' | 'inactif' | 'depart';
@@ -110,4 +117,15 @@ export interface ContractRenewal {
   date_fin: string | null;
   commentaire: string | null;
   created_at: string;
+}
+
+export interface PlanningAssignment {
+  id: string;
+  employee_id: string;
+  jour: string;
+  periode: 'matin' | 'apres_midi';
+  atelier_id: string | null;
+  commentaire: string | null;
+  created_at: string;
+  updated_at: string;
 }

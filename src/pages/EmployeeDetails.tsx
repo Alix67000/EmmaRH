@@ -6,9 +6,10 @@ import { useSites } from '../hooks/useSites';
 import { useAuth } from '../context/AuthContext';
 import { useContractRenewals } from '../hooks/useContractRenewals';
 import { useAbsenceTypes } from '../hooks/useAbsenceTypes';
+import { useAteliers } from '../hooks/useAteliers';
 import {
   ArrowLeft, Save, Trash2, FileText, CalendarOff, Clock,
-  Briefcase, PlusCircle, Umbrella, TrendingUp,
+  Briefcase, PlusCircle, Umbrella, TrendingUp, RefreshCw,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -60,6 +61,7 @@ export default function EmployeeDetails() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { sites } = useSites();
+  const { ateliers } = useAteliers();
 
   const [employee, setEmployee] = useState<Partial<Employee>>({ status: 'actif' });
   const [schedule, setSchedule] = useState<WeeklySchedule>(DEFAULT_SCHEDULE);
@@ -81,6 +83,7 @@ export default function EmployeeDetails() {
   const [loadingAbsences, setLoadingAbsences] = useState(true);
   const [employeeSoldes, setEmployeeSoldes] = useState<any[]>([]);
   const [loadingSoldes, setLoadingSoldes] = useState(true);
+  const [recalculatingConges, setRecalculatingConges] = useState(false);
 
   useEffect(() => {
     if (isNew) {
@@ -127,17 +130,41 @@ export default function EmployeeDetails() {
       }
     };
 
-    const fetchSoldes = async () => {
+    const fetchSoldesAndAutoCalc = async () => {
       try {
+        const currentYear = new Date().getFullYear();
         const { data, error } = await supabase
           .from('soldes_conges')
           .select('*')
           .eq('employee_id', id)
           .order('annee', { ascending: false });
         if (error) throw error;
-        setEmployeeSoldes(data || []);
+
+        const hasCurrentYearCP = (data || []).some(
+          (s: any) => s.annee === currentYear && s.type === 'Congés payés'
+        );
+
+        if (!hasCurrentYearCP) {
+          // Aucun solde "Congés payés" pour l'année en cours : on le calcule automatiquement
+          const { error: rpcError } = await supabase.rpc('recalculate_conges_payes', {
+            p_employee_id: id,
+            p_annee: currentYear,
+          });
+          if (!rpcError) {
+            const { data: refreshed } = await supabase
+              .from('soldes_conges')
+              .select('*')
+              .eq('employee_id', id)
+              .order('annee', { ascending: false });
+            setEmployeeSoldes(refreshed || []);
+          } else {
+            setEmployeeSoldes(data || []);
+          }
+        } else {
+          setEmployeeSoldes(data || []);
+        }
       } catch (err) {
-        console.error('Error fetching employee soldes:', err);
+        console.error('Error fetching/calculating employee soldes:', err);
       } finally {
         setLoadingSoldes(false);
       }
@@ -145,7 +172,7 @@ export default function EmployeeDetails() {
 
     fetchEmployee();
     fetchAbsences();
-    fetchSoldes();
+    fetchSoldesAndAutoCalc();
   }, [id, isNew, profile]);
 
   const handleChange = (field: keyof Employee, value: any) => {
@@ -235,6 +262,31 @@ export default function EmployeeDetails() {
       refetchContracts();
     } catch (err: any) {
       alert(`Erreur : ${err.message}`);
+    }
+  };
+
+  const handleRecalculateConges = async () => {
+    if (!id) return;
+    setRecalculatingConges(true);
+    try {
+      const currentYear = new Date().getFullYear();
+      const { error } = await supabase.rpc('recalculate_conges_payes', {
+        p_employee_id: id,
+        p_annee: currentYear,
+      });
+      if (error) throw error;
+
+      const { data, error: fetchError } = await supabase
+        .from('soldes_conges')
+        .select('*')
+        .eq('employee_id', id)
+        .order('annee', { ascending: false });
+      if (fetchError) throw fetchError;
+      setEmployeeSoldes(data || []);
+    } catch (err: any) {
+      alert(`Erreur lors du recalcul : ${err.message || 'Erreur inconnue'}`);
+    } finally {
+      setRecalculatingConges(false);
     }
   };
 
@@ -360,6 +412,19 @@ export default function EmployeeDetails() {
                   onChange={e => handleChange('poste', e.target.value)}
                   className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500"
                 />
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Atelier</label>
+                <select
+                  value={employee.atelier_id || ''}
+                  onChange={e => handleChange('atelier_id', e.target.value || null)}
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 bg-white"
+                >
+                  <option value="">Aucun atelier</option>
+                  {ateliers.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -636,12 +701,23 @@ export default function EmployeeDetails() {
             Congés & Absences
           </h3>
           {!isNew && (
-            <Link
-              to="/absences/new"
-              className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded shadow-sm transition-colors"
-            >
-              <PlusCircle className="w-3.5 h-3.5" /> Nouvelle absence
-            </Link>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleRecalculateConges}
+                disabled={recalculatingConges}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 text-slate-600 text-xs font-bold rounded shadow-sm transition-colors disabled:opacity-50"
+                title="Recalcule le solde légal : 2,5 jours ouvrables acquis par mois de contrat actif"
+              >
+                <RefreshCw className={cn('w-3.5 h-3.5', recalculatingConges && 'animate-spin')} />
+                Recalculer le solde CP
+              </button>
+              <Link
+                to="/absences/new"
+                className="flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded shadow-sm transition-colors"
+              >
+                <PlusCircle className="w-3.5 h-3.5" /> Nouvelle absence
+              </Link>
+            </div>
           )}
         </div>
 

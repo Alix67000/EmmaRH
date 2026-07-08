@@ -22,12 +22,20 @@ CREATE TABLE sites (
 -- Foreign key for profiles to sites (added after sites table creation)
 ALTER TABLE profiles ADD CONSTRAINT fk_profiles_sites FOREIGN KEY (site_id) REFERENCES sites(id) ON DELETE SET NULL;
 
+-- 2.5) ateliers
+CREATE TABLE ateliers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+
 -- 3) employees
 CREATE TABLE employees (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   first_name text,
   last_name text,
   site_id uuid REFERENCES sites(id) ON DELETE SET NULL,
+  atelier_id uuid REFERENCES ateliers(id) ON DELETE SET NULL,
   poste text,
   manager_id uuid REFERENCES employees(id) ON DELETE SET NULL,
   status text CHECK (status IN ('actif','inactif','depart')) DEFAULT 'actif',
@@ -126,9 +134,23 @@ CREATE TABLE notifications (
   created_at timestamptz DEFAULT now()
 );
 
+-- 10) planning_assignments
+CREATE TABLE planning_assignments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  employee_id uuid REFERENCES employees(id) ON DELETE CASCADE,
+  jour date NOT NULL,
+  periode text CHECK (periode IN ('matin', 'apres_midi')) NOT NULL,
+  atelier_id uuid REFERENCES ateliers(id) ON DELETE SET NULL,
+  commentaire text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE(employee_id, jour, periode)
+);
+
 -- RLS Enable
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sites ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ateliers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE employees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE document_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE documents ENABLE ROW LEVEL SECURITY;
@@ -136,6 +158,7 @@ ALTER TABLE absence_types ENABLE ROW LEVEL SECURITY;
 ALTER TABLE absences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE soldes_conges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE planning_assignments ENABLE ROW LEVEL SECURITY;
 
 -- Helper function to get current user's role
 CREATE OR REPLACE FUNCTION get_my_role() RETURNS text AS $$
@@ -159,6 +182,10 @@ CREATE POLICY "profiles_manager_update_self" ON profiles FOR UPDATE USING (id = 
 -- sites
 CREATE POLICY "sites_admin_all" ON sites FOR ALL USING (get_my_role() = 'admin');
 CREATE POLICY "sites_manager_site" ON sites FOR SELECT USING (id = get_my_site_id());
+
+-- ateliers
+CREATE POLICY "ateliers_read_all" ON ateliers FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "ateliers_admin_write" ON ateliers FOR ALL USING (get_my_role() = 'admin');
 
 -- employees
 CREATE POLICY "employees_admin_all" ON employees FOR ALL USING (get_my_role() = 'admin');
@@ -193,6 +220,13 @@ CREATE POLICY "soldes_manager_site" ON soldes_conges FOR ALL USING (
 -- notifications
 CREATE POLICY "notifications_user_only" ON notifications FOR ALL USING (user_id = auth.uid());
 
+-- planning_assignments
+CREATE POLICY "planning_assignments_read_all" ON planning_assignments FOR SELECT USING (auth.uid() IS NOT NULL);
+CREATE POLICY "planning_assignments_admin_all" ON planning_assignments FOR ALL USING (get_my_role() = 'admin');
+CREATE POLICY "planning_assignments_manager_site" ON planning_assignments FOR ALL USING (
+  EXISTS (SELECT 1 FROM employees WHERE id = planning_assignments.employee_id AND site_id = get_my_site_id())
+);
+
 -- Triggers for profiles
 CREATE OR REPLACE FUNCTION on_auth_user_created()
 RETURNS TRIGGER AS $$
@@ -224,11 +258,19 @@ DECLARE
   type_permis uuid;
   type_cp uuid;
   type_maladie uuid;
+  atelier_1 uuid;
+  atelier_2 uuid;
+  atelier_3 uuid;
 BEGIN
   -- Insert sites
   INSERT INTO sites (name, address) VALUES ('Emmaüs Strasbourg', 'Strasbourg') RETURNING id INTO site_stras;
   INSERT INTO sites (name, address) VALUES ('Emmaüs Mulhouse', 'Mulhouse') RETURNING id INTO site_mulhouse;
   INSERT INTO sites (name, address) VALUES ('Emmaüs Colmar', 'Colmar') RETURNING id INTO site_colmar;
+
+  -- Insert Ateliers
+  INSERT INTO ateliers (name) VALUES ('Lavage & conditionnement') RETURNING id INTO atelier_1;
+  INSERT INTO ateliers (name) VALUES ('Livraisons') RETURNING id INTO atelier_2;
+  INSERT INTO ateliers (name) VALUES ('Atelier vélos') RETURNING id INTO atelier_3;
 
   -- Insert Auth Users
   INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at, raw_user_meta_data)

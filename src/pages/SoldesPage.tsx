@@ -116,7 +116,7 @@ export default function SoldesPage() {
       employee: emp,
       soldes: empSoldes
     };
-  }).filter(group => group.soldes.length > 0);
+  });
 
   const isDataLoading = loading || empLoading || sitesLoading;
 
@@ -126,7 +126,7 @@ export default function SoldesPage() {
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2">
             <FileBadge className="w-4 h-4 text-slate-400" />
-            Soldes & Congés ({groupedSoldes.length} collaborateurs avec soldes)
+            Soldes & Congés ({groupedSoldes.length} collaborateurs)
           </h3>
           <button 
             onClick={() => setShowForm(!showForm)}
@@ -251,7 +251,13 @@ export default function SoldesPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-50">
-                      {soldes.map(solde => {
+                      {soldes.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="p-4 text-center text-slate-400 bg-white">
+                            Aucun solde enregistré. Cliquez sur "Recalculer (règle légale)" pour le générer automatiquement.
+                          </td>
+                        </tr>
+                      ) : soldes.map(solde => {
                         // Si le solde restant n'est pas remonté ou est null, on le calcule :
                         const restant = solde.solde_restant ?? (solde.solde_initial - solde.pris);
                         return (
