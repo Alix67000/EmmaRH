@@ -8,7 +8,7 @@ import { useContractRenewals } from '../hooks/useContractRenewals';
 import { useAbsenceTypes } from '../hooks/useAbsenceTypes';
 import {
   ArrowLeft, Save, Trash2, FileText, CalendarOff, Clock,
-  Briefcase, PlusCircle, History, Umbrella, TrendingUp,
+  Briefcase, PlusCircle, Umbrella, TrendingUp,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -61,7 +61,7 @@ export default function EmployeeDetails() {
   const { profile } = useAuth();
   const { sites } = useSites();
 
-  const [employee, setEmployee] = useState<Partial<Employee>>({ status: 'actif', contract_type: 'cdi' });
+  const [employee, setEmployee] = useState<Partial<Employee>>({ status: 'actif' });
   const [schedule, setSchedule] = useState<WeeklySchedule>(DEFAULT_SCHEDULE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -69,11 +69,11 @@ export default function EmployeeDetails() {
 
   const isNew = id === 'new';
 
-  // --- Contrat & renouvellements ---
-  const { renewals, loading: renewalsLoading, refetch: refetchRenewals } = useContractRenewals(isNew ? undefined : id);
-  const [showRenewalForm, setShowRenewalForm] = useState(false);
-  const [renewalForm, setRenewalForm] = useState({ date_debut: '', date_fin: '', commentaire: '' });
-  const [savingRenewal, setSavingRenewal] = useState(false);
+  // --- Contrats ---
+  const { renewals: contracts, loading: contractsLoading, refetch: refetchContracts } = useContractRenewals(isNew ? undefined : id);
+  const [showContractForm, setShowContractForm] = useState(false);
+  const [contractForm, setContractForm] = useState({ contract_type: 'cdd' as 'cdi' | 'cdd', date_debut: '', date_fin: '', commentaire: '' });
+  const [savingContract, setSavingContract] = useState(false);
 
   // --- Congés & absences ---
   const { absenceTypes } = useAbsenceTypes();
@@ -204,45 +204,35 @@ export default function EmployeeDetails() {
     }
   };
 
-  const handleAddRenewal = async () => {
-    if (!id || !renewalForm.date_debut) return;
-    setSavingRenewal(true);
+  const handleAddContract = async () => {
+    if (!id || !contractForm.date_debut) return;
+    setSavingContract(true);
     try {
       const { error: insertError } = await supabase.from('contract_renewals').insert([{
         employee_id: id,
-        date_debut: renewalForm.date_debut,
-        date_fin: renewalForm.date_fin || null,
-        commentaire: renewalForm.commentaire || null,
+        contract_type: contractForm.contract_type,
+        date_debut: contractForm.date_debut,
+        date_fin: contractForm.date_fin || null,
+        commentaire: contractForm.commentaire || null,
       }]);
       if (insertError) throw insertError;
 
-      const { error: updateError } = await supabase.from('employees').update({
-        date_debut_contrat: renewalForm.date_debut,
-        date_fin_contrat: renewalForm.date_fin || null,
-      }).eq('id', id);
-      if (updateError) throw updateError;
-
-      setEmployee(prev => ({
-        ...prev,
-        date_debut_contrat: renewalForm.date_debut,
-        date_fin_contrat: renewalForm.date_fin || null,
-      }));
-      setRenewalForm({ date_debut: '', date_fin: '', commentaire: '' });
-      setShowRenewalForm(false);
-      refetchRenewals();
+      setContractForm({ contract_type: 'cdd', date_debut: '', date_fin: '', commentaire: '' });
+      setShowContractForm(false);
+      refetchContracts();
     } catch (err: any) {
-      alert(`Erreur lors de l'ajout du renouvellement : ${err.message}`);
+      alert(`Erreur lors de l'ajout du contrat : ${err.message}`);
     } finally {
-      setSavingRenewal(false);
+      setSavingContract(false);
     }
   };
 
-  const handleDeleteRenewal = async (renewalId: string) => {
-    if (!confirm('Supprimer cet historique de renouvellement ?')) return;
+  const handleDeleteContract = async (contractId: string) => {
+    if (!confirm('Supprimer ce contrat de l\'historique ?')) return;
     try {
-      const { error } = await supabase.from('contract_renewals').delete().eq('id', renewalId);
+      const { error } = await supabase.from('contract_renewals').delete().eq('id', contractId);
       if (error) throw error;
-      refetchRenewals();
+      refetchContracts();
     } catch (err: any) {
       alert(`Erreur : ${err.message}`);
     }
@@ -265,11 +255,14 @@ export default function EmployeeDetails() {
     }
   };
 
+  // Le contrat "actuel" = celui avec la date de début la plus récente
+  const sortedContracts = [...contracts].sort((a, b) => (a.date_debut < b.date_debut ? 1 : -1));
+  const currentContract = sortedContracts[0];
+
   const currentYear = new Date().getFullYear();
   const currentYearSoldes = employeeSoldes.filter(s => s.annee === currentYear);
   const totalSoldeRestant = currentYearSoldes.reduce((sum, s) => sum + Number(s.solde_restant ?? (s.solde_initial - s.pris)), 0);
   const totalPrisAnnee = currentYearSoldes.reduce((sum, s) => sum + Number(s.pris || 0), 0);
-  const totalAbsencesValidees = employeeAbsences.filter(a => a.statut === 'valide').length;
   const totalAbsencesEnAttente = employeeAbsences.filter(a => a.statut === 'en_attente').length;
 
   if (loading) return <div className="p-4 text-sm text-slate-500">Chargement...</div>;
@@ -383,26 +376,6 @@ export default function EmployeeDetails() {
                   <option value="depart">Départ</option>
                 </select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Date d'entrée</label>
-                  <input
-                    type="date"
-                    value={employee.date_entree || ''}
-                    onChange={e => handleChange('date_entree', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Date de sortie</label>
-                  <input
-                    type="date"
-                    value={employee.date_sortie || ''}
-                    onChange={e => handleChange('date_sortie', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Email professionnel</label>
                 <input
@@ -505,156 +478,151 @@ export default function EmployeeDetails() {
         </div>
       </div>
 
-      {/* Contrat de travail */}
+      {/* Contrats de travail */}
       <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-slate-400" />
-            Contrat de travail
-          </h3>
+          <div>
+            <h3 className="font-bold text-sm text-slate-700 flex items-center gap-2">
+              <Briefcase className="w-4 h-4 text-slate-400" />
+              Contrats
+            </h3>
+            {currentContract && (
+              <p className="text-[11px] text-slate-500 mt-1">
+                Contrat actuel : <strong className="text-slate-700 uppercase">{currentContract.contract_type}</strong> depuis le {fmtDate(currentContract.date_debut)}
+                {currentContract.date_fin && <> — fin prévue le {fmtDate(currentContract.date_fin)}</>}
+              </p>
+            )}
+          </div>
           {!isNew && (
             <button
-              onClick={() => setShowRenewalForm(!showRenewalForm)}
-              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-sm transition-colors"
+              onClick={() => setShowContractForm(!showContractForm)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-sm transition-colors flex-shrink-0"
             >
-              <PlusCircle className="w-3.5 h-3.5" /> Ajouter un renouvellement
+              <PlusCircle className="w-3.5 h-3.5" /> Ajouter un contrat
             </button>
           )}
         </div>
 
         {isNew ? (
           <div className="p-6 text-center text-xs text-slate-500">
-            Enregistrez d'abord la fiche pour pouvoir gérer le contrat et ses renouvellements.
+            Enregistrez d'abord la fiche pour pouvoir ajouter des contrats.
           </div>
         ) : (
           <div className="p-6 space-y-6">
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Type de contrat</label>
-                <select
-                  value={employee.contract_type || 'cdi'}
-                  onChange={e => handleChange('contract_type', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 bg-white"
-                >
-                  <option value="cdi">CDI</option>
-                  <option value="cdd">CDD</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Date début contrat</label>
-                <input
-                  type="date"
-                  value={employee.date_debut_contrat || ''}
-                  onChange={e => handleChange('date_debut_contrat', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-                  Date fin contrat {employee.contract_type === 'cdi' && <span className="normal-case font-normal text-slate-400">(N/A pour un CDI)</span>}
-                </label>
-                <input
-                  type="date"
-                  value={employee.date_fin_contrat || ''}
-                  disabled={employee.contract_type === 'cdi'}
-                  onChange={e => handleChange('date_fin_contrat', e.target.value)}
-                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 disabled:bg-slate-50 disabled:text-slate-400"
-                />
-              </div>
-            </div>
-
-            {showRenewalForm && (
+            {showContractForm && (
               <div className="p-4 bg-slate-50/70 border border-slate-200 rounded-lg space-y-3">
-                <p className="text-xs font-bold text-slate-600">Nouveau renouvellement de contrat</p>
-                <div className="grid grid-cols-3 gap-3">
+                <p className="text-xs font-bold text-slate-600">
+                  {contracts.length === 0 ? 'Premier contrat' : `Contrat n°${contracts.length + 1}`}
+                </p>
+                <div className="grid grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Type *</label>
+                    <select
+                      value={contractForm.contract_type}
+                      onChange={e => setContractForm({ ...contractForm, contract_type: e.target.value as 'cdi' | 'cdd' })}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 bg-white"
+                    >
+                      <option value="cdd">CDD</option>
+                      <option value="cdi">CDI</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Date début *</label>
                     <input
                       type="date"
-                      value={renewalForm.date_debut}
-                      onChange={e => setRenewalForm({ ...renewalForm, date_debut: e.target.value })}
+                      value={contractForm.date_debut}
+                      onChange={e => setContractForm({ ...contractForm, date_debut: e.target.value })}
                       className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 bg-white"
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Date fin</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                      Date fin {contractForm.contract_type === 'cdi' && <span className="normal-case font-normal text-slate-400">(N/A)</span>}
+                    </label>
                     <input
                       type="date"
-                      value={renewalForm.date_fin}
-                      onChange={e => setRenewalForm({ ...renewalForm, date_fin: e.target.value })}
-                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 bg-white"
+                      value={contractForm.date_fin}
+                      disabled={contractForm.contract_type === 'cdi'}
+                      onChange={e => setContractForm({ ...contractForm, date_fin: e.target.value })}
+                      className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 bg-white disabled:bg-slate-100 disabled:text-slate-400"
                     />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Commentaire</label>
                     <input
                       type="text"
-                      value={renewalForm.commentaire}
-                      onChange={e => setRenewalForm({ ...renewalForm, commentaire: e.target.value })}
+                      value={contractForm.commentaire}
+                      onChange={e => setContractForm({ ...contractForm, commentaire: e.target.value })}
                       className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 bg-white"
-                      placeholder="Ex: renouvellement CDD +6 mois"
+                      placeholder="Ex: contrat initial, avenant..."
                     />
                   </div>
                 </div>
                 <div className="flex justify-end gap-2">
                   <button
-                    onClick={() => setShowRenewalForm(false)}
+                    onClick={() => setShowContractForm(false)}
                     className="px-3 py-1.5 text-xs font-bold text-slate-500 hover:text-slate-800"
                   >
                     Annuler
                   </button>
                   <button
-                    onClick={handleAddRenewal}
-                    disabled={savingRenewal || !renewalForm.date_debut}
+                    onClick={handleAddContract}
+                    disabled={savingContract || !contractForm.date_debut}
                     className="flex items-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded shadow-sm disabled:opacity-50"
                   >
-                    <Save className="w-3.5 h-3.5" /> Enregistrer le renouvellement
+                    <Save className="w-3.5 h-3.5" /> Enregistrer le contrat
                   </button>
                 </div>
               </div>
             )}
 
-            <div>
-              <h4 className="flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                <History className="w-3.5 h-3.5" />
-                Historique des renouvellements
-              </h4>
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
-                    <tr className="h-8">
-                      <th className="pl-3 font-bold">Début</th>
-                      <th className="font-bold">Fin</th>
-                      <th className="font-bold">Commentaire</th>
-                      <th className="pr-3 font-bold text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {renewalsLoading ? (
-                      <tr><td colSpan={4} className="p-3 text-center text-slate-500">Chargement...</td></tr>
-                    ) : renewals.length === 0 ? (
-                      <tr><td colSpan={4} className="p-3 text-center text-slate-500">Aucun renouvellement enregistré.</td></tr>
-                    ) : (
-                      renewals.map(r => (
-                        <tr key={r.id} className="h-10 hover:bg-slate-50">
-                          <td className="pl-3 font-bold text-slate-700">{fmtDate(r.date_debut)}</td>
-                          <td className="text-slate-600">{fmtDate(r.date_fin)}</td>
-                          <td className="text-slate-500">{r.commentaire || '-'}</td>
-                          <td className="pr-3 text-right">
-                            <button
-                              onClick={() => handleDeleteRenewal(r.id)}
-                              className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50"
-                              title="Supprimer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead className="bg-slate-50 text-slate-400 font-bold uppercase">
+                  <tr className="h-8">
+                    <th className="pl-3 font-bold">Type</th>
+                    <th className="font-bold">Début</th>
+                    <th className="font-bold">Fin</th>
+                    <th className="font-bold">Commentaire</th>
+                    <th className="pr-3 font-bold text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {contractsLoading ? (
+                    <tr><td colSpan={5} className="p-3 text-center text-slate-500">Chargement...</td></tr>
+                  ) : sortedContracts.length === 0 ? (
+                    <tr><td colSpan={5} className="p-3 text-center text-slate-500">Aucun contrat enregistré. Cliquez sur "Ajouter un contrat" pour créer le premier.</td></tr>
+                  ) : (
+                    sortedContracts.map((c, idx) => (
+                      <tr key={c.id} className="h-10 hover:bg-slate-50">
+                        <td className="pl-3">
+                          <span className={cn(
+                            'inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase border',
+                            c.contract_type === 'cdi' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-blue-50 text-blue-700 border-blue-100'
+                          )}>
+                            {c.contract_type}
+                          </span>
+                          {idx === 0 && (
+                            <span className="ml-1.5 text-[9px] font-bold text-emerald-600 uppercase">actuel</span>
+                          )}
+                        </td>
+                        <td className="font-bold text-slate-700">{fmtDate(c.date_debut)}</td>
+                        <td className="text-slate-600">{fmtDate(c.date_fin)}</td>
+                        <td className="text-slate-500">{c.commentaire || '-'}</td>
+                        <td className="pr-3 text-right">
+                          <button
+                            onClick={() => handleDeleteContract(c.id)}
+                            className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50"
+                            title="Supprimer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -688,12 +656,12 @@ export default function EmployeeDetails() {
               <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-lg">
                 <div className="flex items-center gap-1.5 text-emerald-700">
                   <TrendingUp className="w-3.5 h-3.5" />
-                  <p className="text-[10px] font-bold uppercase tracking-wider">Solde restant {new Date().getFullYear()}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider">Solde restant {currentYear}</p>
                 </div>
                 <p className="text-xl font-black text-emerald-700 mt-1">{totalSoldeRestant} j</p>
               </div>
               <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Jours pris {new Date().getFullYear()}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Jours pris {currentYear}</p>
                 <p className="text-xl font-black text-slate-700 mt-1">{totalPrisAnnee} j</p>
               </div>
               <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-lg">
