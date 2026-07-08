@@ -6,12 +6,14 @@ import { useEmployees } from '../hooks/useEmployees';
 import { useAbsenceTypes } from '../hooks/useAbsenceTypes';
 import { ArrowLeft, Save } from 'lucide-react';
 import { Absence } from '../types';
+import { useJoursFeries } from '../hooks/useJoursFeries';
 
 export default function NewAbsence() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const { employees } = useEmployees();
   const { absenceTypes } = useAbsenceTypes();
+  const { joursFeries, loading: loadingJoursFeries } = useJoursFeries();
 
   const [absence, setAbsence] = useState<Partial<Absence>>({ statut: 'en_attente' });
   const [saving, setSaving] = useState(false);
@@ -30,10 +32,20 @@ export default function NewAbsence() {
     const d1 = new Date(start);
     const d2 = new Date(end);
     if (d1 > d2) return 0;
-    // For simplicity, naive duration. In real app, exclude weekends.
-    const diffTime = Math.abs(d2.getTime() - d1.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
-    return diffDays;
+
+    let count = 0;
+    const cursor = new Date(d1);
+    while (cursor <= d2) {
+      const dayOfWeek = cursor.getDay(); // 0 = dimanche, 6 = samedi
+      const isoDate = cursor.toISOString().split('T')[0];
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isFerie = joursFeries.has(isoDate);
+      if (!isWeekend && !isFerie) {
+        count += 1;
+      }
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return count;
   };
 
   const handleDateChange = (field: 'date_debut' | 'date_fin', value: string) => {
@@ -178,7 +190,7 @@ export default function NewAbsence() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Durée (jours)</label>
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Durée (jours ouvrés)</label>
               <input 
                 type="number" 
                 step="0.5"
@@ -186,6 +198,11 @@ export default function NewAbsence() {
                 onChange={e => setAbsence({...absence, duree: parseFloat(e.target.value)})}
                 className="w-full px-3 py-2 text-sm border border-slate-200 rounded-md outline-none focus:border-emerald-500 bg-slate-50"
               />
+              <p className="text-[10px] text-slate-400 mt-1">
+                {loadingJoursFeries
+                  ? 'Chargement des jours fériés (Alsace-Moselle)...'
+                  : 'Calculé automatiquement : jours ouvrés (lun-ven), hors jours fériés (zone Alsace-Moselle, via calendrier.api.gouv.fr). Modifiable manuellement si besoin.'}
+              </p>
             </div>
             
             <div className="col-span-2">

@@ -4,7 +4,7 @@ import { useEmployees } from '../hooks/useEmployees';
 import { useSites } from '../hooks/useSites';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
-import { FileBadge, Plus, Save } from 'lucide-react';
+import { FileBadge, Plus, Save, RefreshCw } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Employee, Site } from '../types';
 
@@ -41,6 +41,7 @@ export default function SoldesPage() {
     pris: 0
   });
   const [saving, setSaving] = useState(false);
+  const [recalculatingId, setRecalculatingId] = useState<string | null>(null);
 
   const fetchSoldes = async () => {
     try {
@@ -79,6 +80,23 @@ export default function SoldesPage() {
       alert("Erreur lors de l'enregistrement du solde. Vérifiez si ce solde (année/type) existe déjà pour cet employé.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRecalculate = async (employeeId: string) => {
+    setRecalculatingId(employeeId);
+    try {
+      const currentYear = new Date().getFullYear();
+      const { error } = await supabase.rpc('recalculate_conges_payes', {
+        p_employee_id: employeeId,
+        p_annee: currentYear,
+      });
+      if (error) throw error;
+      fetchSoldes();
+    } catch (err: any) {
+      alert(`Erreur lors du recalcul : ${err.message || 'Erreur inconnue'}`);
+    } finally {
+      setRecalculatingId(null);
     }
   };
 
@@ -211,6 +229,15 @@ export default function SoldesPage() {
                       {getSiteName(employee.site_id)}
                     </span>
                   </div>
+                  <button
+                    onClick={() => handleRecalculate(employee.id)}
+                    disabled={recalculatingId === employee.id}
+                    className="flex items-center gap-1 px-2 py-1 bg-white border border-slate-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200 text-slate-600 text-[10px] font-bold rounded transition-colors disabled:opacity-50"
+                    title="Recalcule le solde légal (2,5 jours ouvrables / mois de contrat actif)"
+                  >
+                    <RefreshCw className={cn('w-3 h-3', recalculatingId === employee.id && 'animate-spin')} />
+                    Recalculer (règle légale)
+                  </button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
