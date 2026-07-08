@@ -39,6 +39,9 @@ export interface Employee {
   email: string | null;
   phone: string | null;
   horaires_travail: WeeklySchedule | null;
+  contract_type: 'cdi' | 'cdd' | null;
+  date_debut_contrat: string | null;
+  date_fin_contrat: string | null;
   created_at: string;
 }
 
@@ -99,5 +102,14 @@ export interface Notification {
   message: string | null;
   lu: boolean;
   lien: string | null;
+  created_at: string;
+}
+
+export interface ContractRenewal {
+  id: string;
+  employee_id: string;
+  date_debut: string;
+  date_fin: string | null;
+  commentaire: string | null;
   created_at: string;
 }
